@@ -1,9 +1,8 @@
 import json
 from json import JSONDecodeError
 from typing import List, Dict, Any
-
 from pydantic import ValidationError
-
+from utils.metrics import timed
 from llm.prompt_builder import build_mistral_prompt
 from utils.section_detector import detect_sections
 from utils.chunker import chunk_sections
@@ -86,12 +85,17 @@ def analyze_document(llm, document: str) -> List[Dict[str, Any]]:
             section["content"],
         )
 
-        response = llm(
-            prompt,
-            max_tokens=512,
-            temperature=0.1,
-            stop=["</s>"],
-        )
+        with timed() as timing:
+            response = llm(
+                prompt,
+                max_tokens=512,
+                temperature=0.1,
+                stop=["</s>"],
+            )
+
+        usage = response.get("usage", {})
+        prompt_tokens = usage.get("prompt_tokens")
+        completion_tokens = usage.get("completion_tokens")
 
         raw_text = response["choices"][0]["text"].strip()
 
@@ -133,6 +137,11 @@ def analyze_document(llm, document: str) -> List[Dict[str, Any]]:
                   "section_title": section["title"],
                   "error": "Validation failed after repair attempt",
                   "raw_output": raw_text,
+                      "meta": {
+                      "duration_ms": timing["duration_ms"],
+                      "repair_attempted": True,
+                      "repair_succeeded": False,
+                  }
               })
 
     return results

@@ -6,6 +6,9 @@ from api.background_tasks import run_analysis
 from llm.loader import load_llm
 from fastapi import UploadFile, File
 from utils.file_loader import extract_text
+from fastapi import Depends
+from api.auth import require_api_key
+from api.rate_limit import rate_limit
 import time
 import json
 
@@ -15,21 +18,29 @@ print("🚀 Loading LLM...")
 llm = load_llm()
 print("✅ LLM loaded")
 
-@app.post("/analyze/document")
+@app.post("/analyze/document", dependencies=[
+    Depends(require_api_key),
+    Depends(rate_limit),
+])
 def submit_document(request: DocumentRequest, background_tasks: BackgroundTasks):
     job_id = create_job()
     background_tasks.add_task(run_analysis, job_id, llm, request.document_text)
     return {"job_id": job_id, "status": "submitted"}
 
-@app.get("/jobs/{job_id}")
+@app.get("/jobs/{job_id}", dependencies=[
+    Depends(require_api_key),
+    Depends(rate_limit),
+])
 def get_job_status(job_id: str):
     job = get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return job
 
-
-@app.get("/stream/{job_id}")
+@app.get("/stream", dependencies=[
+    Depends(require_api_key),
+    Depends(rate_limit),
+])
 def stream_job(job_id: str):
     def event_generator():
         last_index = 0
@@ -53,7 +64,10 @@ def stream_job(job_id: str):
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
-@app.post("/analyze/file")
+@app.post("/analyze/file", dependencies=[
+    Depends(require_api_key),
+    Depends(rate_limit),
+])
 async def analyze_file(
     file: UploadFile = File(...),
     background_tasks: BackgroundTasks = None,

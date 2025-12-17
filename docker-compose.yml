@@ -1,4 +1,10 @@
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: llm-redis
+    ports:
+      - "6379:6379"
+
   llm-analyzer:
     build: .
     container_name: llm-document-analyzer
@@ -6,3 +12,8 @@ services:
       - "8000:8000"
     environment:
       - PYTHONUNBUFFERED=1
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - API_KEYS=dev-key-123,prod-key-456
+    depends_on:
+      - redis

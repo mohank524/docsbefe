@@ -5,4 +5,4 @@ uvicorn
 pymupdf
 python-docx
 python-multipart
- 
+redis

@@ -1,4 +1,4 @@
-def chunk_sections(sections, max_chars=1500):
+def chunk_sections(sections, max_chars=800):
     chunks = []
     for s in sections:
         text = s["content"]

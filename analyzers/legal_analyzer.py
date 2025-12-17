@@ -26,7 +26,7 @@ Text:
 '''
         )
 
-        out = llm(prompt, max_tokens=600, stop=["</s>"])
+        out = llm(prompt, max_tokens=256, stop=["</s>"])
         raw = out["choices"][0]["text"].strip()
 
         try:

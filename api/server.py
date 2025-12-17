@@ -9,6 +9,9 @@ from utils.file_loader import extract_text
 from fastapi import Depends
 from api.auth import require_api_key
 from api.rate_limit import rate_limit
+from api.auth import require_api_key
+from utils.audit import audit_event
+from fastapi import Depends
 import time
 import json
 
@@ -18,13 +21,28 @@ print("🚀 Loading LLM...")
 llm = load_llm()
 print("✅ LLM loaded")
 
-@app.post("/analyze/document", dependencies=[
-    Depends(require_api_key),
-    Depends(rate_limit),
-])
-def submit_document(request: DocumentRequest, background_tasks: BackgroundTasks):
+@app.post("/analyze/document", dependencies=[Depends(rate_limit)])
+def submit_document(
+    request: DocumentRequest,
+    background_tasks: BackgroundTasks,
+    api_key: str = Depends(require_api_key),
+):
     job_id = create_job()
-    background_tasks.add_task(run_analysis, job_id, llm, request.document_text)
+
+    audit_event(
+        api_key=api_key,
+        action="submit_document",
+        job_id=job_id,
+        status="accepted",
+    )
+
+    background_tasks.add_task(
+        run_analysis,
+        job_id,
+        llm,
+        request.document_text,
+        api_key,
+    )
     return {"job_id": job_id, "status": "submitted"}
 
 @app.get("/jobs/{job_id}", dependencies=[
@@ -71,6 +89,7 @@ def stream_job(job_id: str):
 async def analyze_file(
     file: UploadFile = File(...),
     background_tasks: BackgroundTasks = None,
+    api_key: str = Depends(require_api_key),
 ):
     contents = await file.read()
 
@@ -80,7 +99,7 @@ async def analyze_file(
         raise HTTPException(status_code=400, detail=str(e))
 
     job_id = create_job()
-    background_tasks.add_task(run_analysis, job_id, llm, text)
+    background_tasks.add_task(run_analysis, job_id, llm, text, api_key)
 
     return {
         "job_id": job_id,

@@ -200,7 +200,8 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
-
+.mistral-7b-instruct-v0.2.Q4_K_M.gguf
+models/mistral-7b-instruct-v0.2.Q4_K_M.gguf
 # Marimo
 marimo/_static/
 marimo/_lsp/

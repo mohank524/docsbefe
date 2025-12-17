@@ -4,6 +4,8 @@ from api.schemas import DocumentRequest
 from api.job_store import create_job, get_job
 from api.background_tasks import run_analysis
 from llm.loader import load_llm
+from fastapi import UploadFile, File
+from utils.file_loader import extract_text
 import time
 import json
 
@@ -50,3 +52,24 @@ def stream_job(job_id: str):
             time.sleep(1)
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+@app.post("/analyze/file")
+async def analyze_file(
+    file: UploadFile = File(...),
+    background_tasks: BackgroundTasks = None,
+):
+    contents = await file.read()
+
+    try:
+        text = extract_text(file.filename, contents)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    job_id = create_job()
+    background_tasks.add_task(run_analysis, job_id, llm, text)
+
+    return {
+        "job_id": job_id,
+        "filename": file.filename,
+        "status": "submitted"
+    }
